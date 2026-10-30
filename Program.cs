@@ -188,6 +188,71 @@ app.MapDelete("/monsters/{id:int}", (int id) =>
 });
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+
+//------------------------------------------------------------ Task_RankingDB
+
+// 랭킹에 저장된 db 위치(폴더 경로)
+var rankingDir = Path.Combine(app.Environment.ContentRootPath, "RankingData");  //+ 폴더 만들기(수작업필요)
+Directory.CreateDirectory(rankingDir);
+var ranking = Path.Combine(rankingDir, "Ranking.db");
+var connectionStringRanking = $"Data Source={ranking}";
+
+// 랭킹 테이블이 없으면 만든다.
+using (var conn = new SqliteConnection(connectionStringRanking))
+{
+    conn.Open();
+    var create = conn.CreateCommand();
+    create.CommandText = """
+        CREATE TABLE IF NOT EXISTS ranking (
+            id     TEXT    PRIMARY KEY,
+            score  INTEGER NOT NULL
+        )
+        """;
+    create.ExecuteNonQuery();
+}
+
+// 랭킹 저장
+app.MapPost("/ranking", (Ranking r) =>
+{
+    if (string.IsNullOrWhiteSpace(r.Id))
+        return Results.BadRequest(new { error = "이름은 비어 있으면 안 됩니다." });
+
+    using var conn = new SqliteConnection(connectionStringRanking);
+    conn.Open();
+    var cmd = conn.CreateCommand();
+    cmd.CommandText = """
+        INSERT INTO ranking (id, score) VALUES ($id, $score)
+        ON CONFLICT(id) DO UPDATE SET score = MAX(score, excluded.score)
+        """;
+    cmd.Parameters.AddWithValue("$id", r.Id);
+    cmd.Parameters.AddWithValue("$score", r.Score);
+    cmd.ExecuteNonQuery();
+
+    return Results.Ok(r);
+});
+
+
+// 랭킹 top 10 조회
+app.MapGet("/ranking/top", () =>
+{
+    using var conn = new SqliteConnection(connectionStringRanking);
+    conn.Open();
+    var cmd = conn.CreateCommand();
+    cmd.CommandText = "SELECT id, score FROM ranking ORDER BY score DESC LIMIT 10";
+    using var reader = cmd.ExecuteReader();
+    var list = new List<Ranking>();
+    while (reader.Read())
+    {
+        list.Add(new Ranking
+        {
+            Id = reader.GetString(0),
+            Score = reader.GetInt32(1)
+        });
+    }
+    return new { ranking = list };
+});
+//------------------------------------------------------------ Task_RankingDB
+
 app.Run($"http://0.0.0.0:{port}");
 
 // 데이터 모양
@@ -198,4 +263,14 @@ class Monster
     public int Hp { get; set; }
     public int Attack { get; set; }
     public float Speed { get; set; }
+}
+
+
+//------------------------------------------------------------ Task_RankingDB
+// 랭킹 db
+class Ranking
+{
+    public string Id { get; set; } = "";
+    public int Score { get; set; }
+   
 }
