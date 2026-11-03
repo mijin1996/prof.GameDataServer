@@ -1,18 +1,3 @@
-# GameDataServer
-
-SQLite 기반 게임 데이터 서버입니다. 몬스터 데이터와 랭킹을 HTTP API로 제공합니다.
-
-## 문서
-
-| 문서 | 내용 |
-|---|---|
-| [처음 실행해 보기](docs/getting-started.md) | 서버 켜기, 응답 확인, 테스트 실행 |
-| [Render에 배포하기](docs/deploy-render.md) | 자동 배포 방법과 주의할 점 |
-| [API 주소 목록](docs/api.md) | 몬스터·랭킹 주소와 JSON 모양 |
-| [구조 설명](docs/architecture.md) | 레이어드 아키텍처와 폴더 역할 |
-
-## 참고 도구
-
 ### 서버에 요청을 보내서 응답을 확인하는 API 테스트 도구
 - https://www.postman.com/downloads/
 
