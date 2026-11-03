@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Data\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="AppData\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
