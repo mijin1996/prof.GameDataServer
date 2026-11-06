@@ -7,7 +7,7 @@ using GameDataServer.Data.Repositories;
 namespace GameDataServer.Services;
 
 // 랭킹 규칙: 이름은 비면 안 되고, 같은 이름은 최고 점수만 남는다, 상위 10명만 보여 준다
-public class RankingService
+public class RankingService : IRankingService
 {
     private const int TopCount = 10;
 

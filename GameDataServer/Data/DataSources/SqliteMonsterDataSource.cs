@@ -3,30 +3,23 @@ using Microsoft.Data.Sqlite;   // SQLite 데이터베이스를 여는 도구
 
 namespace GameDataServer.Data.DataSources;
 
-// Data/game.db 파일과 직접 SQL로 이야기하는 클래스. SQL은 여기에만 있다
+// AppData/game.db의 monsters 표와 직접 SQL로 이야기하는 클래스. 몬스터 SQL은 여기에만 있다
 public class SqliteMonsterDataSource : IMonsterDataSource
 {
     private const string SelectColumns = "SELECT id, name, hp, attack, speed FROM monsters";
 
-    private readonly string _dbPath;
-    private readonly string _connectionString;
+    private readonly SqliteDatabase _db;
 
-    public SqliteMonsterDataSource(string dbPath)
+    public SqliteMonsterDataSource(SqliteDatabase db)
     {
-        _dbPath = dbPath;
-        _connectionString = $"Data Source={dbPath}";
+        _db = db;
     }
 
     public async Task CreateTableAsync()
     {
-        // DB 파일이 들어갈 폴더가 없으면 만든다 (파일은 처음 열 때 만들어진다)
-        string? folder = Path.GetDirectoryName(_dbPath);
-        if (!string.IsNullOrEmpty(folder))
-        {
-            Directory.CreateDirectory(folder);
-        }
+        _db.EnsureFolder();
 
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS monsters (
@@ -42,7 +35,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<long> CountAsync()
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM monsters";
         object? count = await cmd.ExecuteScalarAsync();
@@ -51,7 +44,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<List<MonsterDto>> GetAllAsync()
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = SelectColumns + " ORDER BY id";
         await using SqliteDataReader reader = await cmd.ExecuteReaderAsync();
@@ -60,7 +53,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<MonsterDto?> GetByIdAsync(int id)
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = SelectColumns + " WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", id);   // 값은 글자로 이어 붙이지 않고 파라미터로 넘긴다
@@ -71,7 +64,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<int> InsertAsync(MonsterDto dto)
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = """
             INSERT INTO monsters (name, hp, attack, speed) VALUES ($name, $hp, $attack, $speed);
@@ -84,7 +77,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<int> UpdateAsync(int id, MonsterDto dto)
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "UPDATE monsters SET name = $name, hp = $hp, attack = $attack, speed = $speed WHERE id = $id";
         AddMonsterParameters(cmd, dto);
@@ -94,7 +87,7 @@ public class SqliteMonsterDataSource : IMonsterDataSource
 
     public async Task<int> DeleteAsync(int id)
     {
-        await using SqliteConnection conn = await OpenAsync();
+        await using SqliteConnection conn = await _db.OpenAsync();
         SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "DELETE FROM monsters WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", id);
@@ -102,13 +95,6 @@ public class SqliteMonsterDataSource : IMonsterDataSource
     }
 
     // ---- 여기부터는 이 클래스 안에서만 쓰는 도우미 ----
-
-    private async Task<SqliteConnection> OpenAsync()
-    {
-        var conn = new SqliteConnection(_connectionString);
-        await conn.OpenAsync();
-        return conn;
-    }
 
     private static void AddMonsterParameters(SqliteCommand cmd, MonsterDto dto)
     {
