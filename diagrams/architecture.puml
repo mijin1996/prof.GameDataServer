@@ -1,0 +1,104 @@
+@startuml architecture
+' 레이어 구조: 위에서 아래로만 호출한다. 화살표 끝이 인터페이스인 것에 주목 (의존성 역전)
+allowmixing
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam class {
+  BackgroundColor White
+  BorderColor #555555
+}
+hide empty members
+
+package "Endpoints (주소 → HTTP 응답)" as P1 {
+  class MonsterEndpoints
+  class RankingEndpoints
+  class AuthEndpoints
+  class ErrorResults
+}
+
+package "Services (규칙)" as P2 {
+  interface IMonsterService
+  interface IRankingService
+  interface IAuthService
+  class MonsterService
+  class RankingService
+  class AuthService
+}
+
+package "Auth (토큰)" as P3 {
+  interface ITokenService
+  class JwtTokenService
+  class JwtSettings
+}
+
+package "Data/Repositories (Model로 돌려주기)" as P4 {
+  interface IMonsterRepository
+  interface IRankingRepository
+  interface IPlayerRepository
+  class MonsterRepository
+  class RankingRepository
+  class PlayerRepository
+}
+
+package "Data/DataSources (SQL·파일)" as P5 {
+  interface IMonsterDataSource
+  interface IMonsterSeedDataSource
+  interface IRankingDataSource
+  interface IPlayerDataSource
+  class SqliteMonsterDataSource
+  class JsonFileMonsterSeedDataSource
+  class SqliteRankingDataSource
+  class SqlitePlayerDataSource
+  class SqliteDatabase
+}
+
+database "AppData/game.db" as gamedb
+database "RankingData/Ranking.db" as rankdb
+file "AppData/monsters.json" as seed
+
+' ── Endpoints → Service 인터페이스 ──
+MonsterEndpoints --> IMonsterService
+RankingEndpoints --> IRankingService
+AuthEndpoints --> IAuthService
+MonsterEndpoints ..> ErrorResults
+RankingEndpoints ..> ErrorResults
+AuthEndpoints ..> ErrorResults
+
+' ── 인터페이스 <|.. 구현 (구현이 아래에 그려진다) ──
+IMonsterService <|.. MonsterService
+IRankingService <|.. RankingService
+IAuthService <|.. AuthService
+
+' ── Service → Repository·Token 인터페이스 ──
+MonsterService --> IMonsterRepository
+RankingService --> IRankingRepository
+AuthService --> IPlayerRepository
+AuthService --> ITokenService
+ITokenService <|.. JwtTokenService
+JwtTokenService --> JwtSettings
+
+IMonsterRepository <|.. MonsterRepository
+IRankingRepository <|.. RankingRepository
+IPlayerRepository <|.. PlayerRepository
+
+' ── Repository → DataSource 인터페이스 ──
+MonsterRepository --> IMonsterDataSource
+MonsterRepository --> IMonsterSeedDataSource
+RankingRepository --> IRankingDataSource
+PlayerRepository --> IPlayerDataSource
+
+IMonsterDataSource <|.. SqliteMonsterDataSource
+IMonsterSeedDataSource <|.. JsonFileMonsterSeedDataSource
+IRankingDataSource <|.. SqliteRankingDataSource
+IPlayerDataSource <|.. SqlitePlayerDataSource
+
+' ── 실제 파일 ──
+SqliteMonsterDataSource --> SqliteDatabase
+SqlitePlayerDataSource --> SqliteDatabase
+SqliteRankingDataSource --> SqliteDatabase
+SqliteDatabase --> gamedb
+SqliteDatabase --> rankdb
+JsonFileMonsterSeedDataSource --> seed
+@enduml

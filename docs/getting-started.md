@@ -84,4 +84,5 @@ dotnet test
 
 - 전체 주소 목록 → [api.md](api.md)
 - 폴더가 왜 이렇게 나뉘어 있는지 → [architecture.md](architecture.md)
+- 구조와 흐름을 그림으로 보기 → [uml.md](uml.md)
 - 인터넷에 배포하기 → [deploy-render.md](deploy-render.md)

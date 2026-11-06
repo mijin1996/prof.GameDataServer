@@ -1,0 +1,46 @@
+@startuml login-sequence
+' POST /auth/login — 로그인하고 토큰 받기
+skinparam shadowing false
+autonumber
+
+actor "Unity / PowerShell" as Client
+participant AuthEndpoints
+participant AuthService
+participant PlayerRepository
+participant SqlitePlayerDataSource
+database "game.db\n(players)" as DB
+participant JwtTokenService
+
+Client -> AuthEndpoints : POST /auth/login\n{ "player": "kim", "password": "1234" }
+AuthEndpoints -> AuthService : LoginAsync(LoginDto)
+
+alt player 또는 password가 비어 있음
+  AuthService --> AuthEndpoints : Failure(InvalidLogin)
+  AuthEndpoints --> Client : 400 Bad Request
+else 입력이 있음
+  AuthService -> PlayerRepository : GetByNameAsync("kim")
+  PlayerRepository -> SqlitePlayerDataSource : GetByNameAsync("kim")
+  SqlitePlayerDataSource -> DB : SELECT name, password_hash ...
+  DB --> SqlitePlayerDataSource : 행 또는 없음
+  SqlitePlayerDataSource --> PlayerRepository : PlayerDto 또는 null
+  PlayerRepository --> AuthService : Success(Player) 또는 Failure(NotFound)
+
+  alt 처음 보는 이름 (NotFound)
+    AuthService -> AuthService : 비밀번호를 해시로 바꾼다
+    AuthService -> PlayerRepository : AddAsync(Player)
+    PlayerRepository -> SqlitePlayerDataSource : InsertAsync
+    SqlitePlayerDataSource -> DB : INSERT INTO players
+  else 이미 있는 이름
+    AuthService -> AuthService : 해시와 비밀번호 비교
+    opt 비밀번호가 틀림
+      AuthService --> AuthEndpoints : Failure(WrongPassword)
+      AuthEndpoints --> Client : 401 Unauthorized
+    end
+  end
+
+  AuthService -> JwtTokenService : Create("kim")
+  JwtTokenService --> AuthService : TokenResponse (30분짜리 JWT)
+  AuthService --> AuthEndpoints : Success(TokenResponse)
+  AuthEndpoints --> Client : 200 OK\n{ "accessToken": "...", "tokenType": "Bearer", "expiresIn": 1800 }
+end
+@enduml

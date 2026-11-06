@@ -1,0 +1,26 @@
+@startuml deployment
+' 누가 어디서 서버와 통신하는지: Unity 클라이언트 → Render의 GameDataServer → DB 파일
+skinparam shadowing false
+
+actor 플레이어
+node "Unity 게임\n(MonsterClientAsync)" as Unity
+node "GitHub\nmaster 브랜치" as Git
+
+cloud "Render (Docker)" {
+  node "GameDataServer\nhttps://gamedataserver-q5ig.onrender.com" as Server {
+    database "AppData/game.db\nmonsters, players" as GameDb
+    database "RankingData/Ranking.db\nranking" as RankDb
+    file "AppData/monsters.json\n처음 넣을 몬스터" as Seed
+  }
+}
+
+node "내 PC\nlocalhost:5000" as Local
+
+플레이어 --> Unity
+Unity --> Server : HTTP + JSON\n쓰기 요청은 Authorization: Bearer 토큰
+Git --> Server : push하면 자동 배포
+Server --> GameDb
+Server --> RankDb
+Seed ..> GameDb : 테이블이 비어 있을 때만
+Local ..> Git : git push
+@enduml

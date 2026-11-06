@@ -1,0 +1,92 @@
+@startuml models
+' 계층 사이에서 주고받는 데이터: 바깥은 DTO(nullable), 안은 Model(record), 변환은 Mapper
+skinparam shadowing false
+skinparam class {
+  BackgroundColor White
+  BorderColor #555555
+}
+
+package "Dtos (바깥 데이터, 값이 빠질 수 있음)" {
+  class MonsterDto {
+    +Id : int?
+    +Name : string?
+    +Hp : int?
+    +Attack : int?
+    +Speed : float?
+  }
+  class RankingDto {
+    +Id : string?
+    +Score : int?
+  }
+  class PlayerDto {
+    +Name : string?
+    +PasswordHash : string?
+  }
+  class LoginDto {
+    +Player : string?
+    +Password : string?
+  }
+  class TokenResponse <<record>> {
+    +AccessToken : string
+    +TokenType : string
+    +ExpiresIn : int
+  }
+}
+
+package "Models (서버 안 데이터, null 없음)" {
+  class Monster <<record>> {
+    +Id : int
+    +Name : string
+    +Hp : int
+    +Attack : int
+    +Speed : float
+  }
+  class RankingEntry <<record>> {
+    +Id : string
+    +Score : int
+  }
+  class Player <<record>> {
+    +Name : string
+    +PasswordHash : string
+  }
+}
+
+package "Mappers" {
+  class MonsterMapper <<static>> {
+    +ToModel(MonsterDto) : Monster
+    +ToDto(Monster) : MonsterDto
+  }
+  class RankingMapper <<static>> {
+    +ToModel(RankingDto) : RankingEntry
+    +ToDto(RankingEntry) : RankingDto
+  }
+  class PlayerMapper <<static>> {
+    +ToModel(PlayerDto) : Player
+    +ToDto(Player) : PlayerDto
+  }
+}
+
+package "Core (실패 처리)" {
+  abstract class "Result<T>" as Result {
+  }
+  class "Success(T Data)" as Success
+  class "Failure(AppError Error)" as Failure
+  enum AppError {
+    NotFound
+    InvalidName
+    InvalidLogin
+    WrongPassword
+  }
+}
+
+MonsterMapper ..> MonsterDto
+MonsterMapper ..> Monster
+RankingMapper ..> RankingDto
+RankingMapper ..> RankingEntry
+PlayerMapper ..> PlayerDto
+PlayerMapper ..> Player
+
+Success --|> Result
+Failure --|> Result
+Failure --> AppError
+@enduml

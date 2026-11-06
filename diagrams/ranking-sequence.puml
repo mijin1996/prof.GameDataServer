@@ -1,0 +1,39 @@
+@startuml ranking-sequence
+' POST /ranking, GET /ranking/top — 점수 저장과 상위 10명 조회
+skinparam shadowing false
+autonumber
+
+actor "Unity / PowerShell" as Client
+participant RankingEndpoints
+participant RankingService
+participant RankingRepository
+participant SqliteRankingDataSource
+database "Ranking.db\n(ranking)" as DB
+
+== 점수 저장 ==
+Client -> RankingEndpoints : POST /ranking\n{ "id": "kim", "score": 1200 }
+RankingEndpoints -> RankingService : SaveAsync(RankingDto)
+
+alt id가 비어 있음
+  RankingService --> RankingEndpoints : Failure(InvalidName)
+  RankingEndpoints --> Client : 400 Bad Request
+else id가 있음
+  RankingService -> RankingRepository : SaveBestScoreAsync(RankingEntry)
+  RankingRepository -> SqliteRankingDataSource : UpsertBestScoreAsync(RankingDto)
+  SqliteRankingDataSource -> DB : INSERT ... ON CONFLICT(id)\nDO UPDATE SET score = MAX(score, 새 점수)
+  RankingService --> RankingEndpoints : Success(RankingEntry)
+  RankingEndpoints --> Client : 200 OK
+end
+
+== 상위 10명 조회 ==
+Client -> RankingEndpoints : GET /ranking/top
+RankingEndpoints -> RankingService : GetTopAsync()
+RankingService -> RankingRepository : GetTopAsync(10)
+RankingRepository -> SqliteRankingDataSource : GetTopAsync(10)
+SqliteRankingDataSource -> DB : SELECT id, score ... ORDER BY score DESC LIMIT 10
+DB --> SqliteRankingDataSource : 행들
+SqliteRankingDataSource --> RankingRepository : RankingDto 목록
+RankingRepository --> RankingService : RankingEntry 목록
+RankingService --> RankingEndpoints : RankingEntry 목록
+RankingEndpoints --> Client : 200 OK\n{ "ranking": [ ... ] }
+@enduml
